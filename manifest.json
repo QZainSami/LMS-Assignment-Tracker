@@ -1,29 +1,29 @@
 {
-
   "manifest_version": 3,
   "name": "Bahria LMS Assignment Tracker",
   "description": "Collects assignment deadlines from lms.bahria.edu.pk and shows priority-sorted to-dos + notifications.",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "author": "Sami",
-  
+
   "action": {
     "default_popup": "dist/popup.html",
     "default_title": "LMS Assignments"
   },
-  
+
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
     "128": "icon128.png"
   },
-  
+
   "permissions": ["storage", "alarms", "notifications", "tabs", "activeTab"],
   "host_permissions": ["*://lms.bahria.edu.pk/*"],
 
   "background": {
-    "scripts": ["background.js"]
+    "scripts": ["background.js"],
+    "service_worker": "background.js"
   },
-  
+
   "content_scripts": [
     {
       "matches": ["https://lms.bahria.edu.pk/*", "http://lms.bahria.edu.pk/*"],
@@ -34,11 +34,11 @@
   ],
 
   "browser_specific_settings": {
-  "gecko": {
-    "id": "bahria-lms-tracker@your-name.org",
-    "data_collection_permissions": {
-      "required": ["none"]
+    "gecko": {
+      "id": "bahria-lms-tracker@your-name.org",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   }
-}
 }

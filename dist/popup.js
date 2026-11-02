@@ -3,6 +3,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   const grid = document.getElementById('assignments-grid');
   const refreshBtn = document.getElementById('refresh-btn');
+  const clearBtn = document.getElementById('clear-btn');
   const countTag = document.getElementById('assignment-count');
   const syncStatus = document.getElementById('sync-status');
 
@@ -45,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function render(items) {
     if (!items || items.length === 0) {
-      grid.innerHTML = '<div class="empty-state">No pending assignments found 🎉<br><span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:inline-block;">Click "Sync All Courses" to scan your LMS.</span></div>';
+      grid.innerHTML = '<div class="empty-state">No pending assignments found 🎉<br><span style="font-size:0.75rem; color:#64748b; margin-top:4px; display:inline-block;">Click "Sync All Courses" to scan all courses.</span></div>';
       countTag.textContent = '0 Due';
       return;
     }
@@ -53,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     countTag.textContent = `${items.length} Due`;
     grid.innerHTML = '';
 
-    items.forEach(item => {
+    items.forEach((item) => {
       const dateObj = parseDeadline(item.deadline);
       const diff = computeDiff(dateObj);
       const dateDisplay = dateObj
@@ -92,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
       now.setHours(0, 0, 0, 0);
 
       const pending = list
-        .filter(a => {
+        .filter((a) => {
           const d = parseDeadline(a.deadline);
           const notExpired = !d || d >= now;
           const notSubmitted = !a.status || !/submitted/i.test(a.status);
@@ -108,21 +109,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Load cached assignments right away
   loadStored();
 
-  // Re-render whenever background updates assignments in storage
   chrome.storage.onChanged.addListener((changes) => {
     if (changes.assignments) {
       loadStored();
     }
   });
 
-  // Track the crawl progress sent from background.js
+  // Track progress updates sent from content.js
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'sync_progress') {
       refreshBtn.disabled = true;
-      refreshBtn.textContent = `Syncing (${msg.current}/${msg.total})...`;
+      refreshBtn.textContent = `Scanning (${msg.current}/${msg.total})...`;
       syncStatus.textContent = msg.courseName || `Course ${msg.current}/${msg.total}`;
     } else if (msg.type === 'sync_complete') {
       refreshBtn.disabled = false;
@@ -132,11 +131,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Trigger full course crawl via background.js
+  // Automated one-click background sync
   refreshBtn.addEventListener('click', async () => {
     refreshBtn.disabled = true;
     refreshBtn.textContent = 'Scanning...';
-    syncStatus.textContent = 'Checking LMS tab...';
+    syncStatus.textContent = 'Checking LMS...';
 
     try {
       const tabs = await chrome.tabs.query({ url: '*://lms.bahria.edu.pk/*' });
@@ -145,24 +144,24 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshBtn.disabled = false;
         refreshBtn.textContent = 'Sync All Courses';
         syncStatus.textContent = 'LMS tab opened';
-        alert('LMS tab has been opened. Please log in and click Sync again.');
+        alert('LMS tab opened. Please log in and click Sync All Courses again.');
         return;
       }
 
-      let lmsTab = tabs.find(t => /Assignments\.php/i.test(t.url)) || tabs[0];
+      let lmsTab = tabs.find((t) => /Assignments\.php/i.test(t.url)) || tabs[0];
       if (!/Assignments\.php/i.test(lmsTab.url)) {
-        syncStatus.textContent = 'Navigating to Assignments...';
+        syncStatus.textContent = 'Opening assignments page...';
         await chrome.tabs.update(lmsTab.id, { url: 'https://lms.bahria.edu.pk/Student/Assignments.php' });
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await new Promise((r) => setTimeout(r, 1500));
       }
 
-      syncStatus.textContent = 'Starting course crawl...';
-      chrome.runtime.sendMessage({ type: 'collect_all_courses' }, (resp) => {
+      syncStatus.textContent = 'Scanning all courses...';
+      chrome.tabs.sendMessage(lmsTab.id, { type: 'crawl_all_courses' }, (resp) => {
         if (chrome.runtime.lastError || !resp?.ok) {
           refreshBtn.disabled = false;
           refreshBtn.textContent = 'Sync All Courses';
-          syncStatus.textContent = 'Sync error';
-          alert('Could not start sync: ' + (resp?.error || chrome.runtime.lastError?.message || 'Please refresh LMS and try again.'));
+          syncStatus.textContent = 'Sync failed';
+          alert('Could not start sync: ' + (resp?.error || chrome.runtime.lastError?.message || 'Please reload your LMS tab and try again.'));
         }
       });
     } catch (err) {
@@ -170,6 +169,18 @@ document.addEventListener('DOMContentLoaded', () => {
       refreshBtn.textContent = 'Sync All Courses';
       syncStatus.textContent = 'Error';
       alert('Error: ' + err.message);
+    }
+  });
+
+  // Reset button to clear cached assignments
+  clearBtn.addEventListener('click', () => {
+    if (confirm('Clear all stored assignments?')) {
+      chrome.storage.local.set({ assignments: [] }, () => {
+        chrome.alarms.clearAll(() => {
+          loadStored();
+          syncStatus.textContent = 'Cache cleared';
+        });
+      });
     }
   });
 });

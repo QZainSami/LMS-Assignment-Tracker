@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <title>Pending Assignments</title>
@@ -16,7 +17,12 @@
       --danger: #ef4444;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       width: 660px;
@@ -33,8 +39,19 @@
       padding-bottom: 8px;
       border-bottom: 1px solid var(--border);
     }
-    .header h2 { font-size: 1.05rem; font-weight: 700; color: #fff; }
-    .header-info { display: flex; gap: 10px; align-items: center; }
+
+    .header h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .header-info {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
     .badge-count {
       font-size: 0.72rem;
       background: rgba(56, 189, 248, 0.15);
@@ -43,6 +60,24 @@
       padding: 2px 8px;
       border-radius: 9999px;
       font-weight: 600;
+    }
+
+    .btn-clear {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-clear:hover {
+      color: #f87171;
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.3);
     }
 
     /* 2-Column Dashboard Grid */
@@ -55,9 +90,18 @@
       padding-right: 4px;
     }
 
-    #assignments-grid::-webkit-scrollbar { width: 6px; }
-    #assignments-grid::-webkit-scrollbar-track { background: transparent; }
-    #assignments-grid::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    #assignments-grid::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #assignments-grid::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #assignments-grid::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
 
     .card {
       background-color: var(--card-bg);
@@ -69,6 +113,7 @@
       justify-content: space-between;
       transition: border-color 0.2s ease, transform 0.15s ease;
     }
+
     .card:hover {
       border-color: #475569;
       transform: translateY(-1px);
@@ -81,7 +126,12 @@
       gap: 6px;
       margin-bottom: 6px;
     }
-    .title-box { flex: 1; min-width: 0; }
+
+    .title-box {
+      flex: 1;
+      min-width: 0;
+    }
+
     .assignment-title {
       font-size: 0.84rem;
       font-weight: 600;
@@ -91,6 +141,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
     .course-name {
       font-size: 0.72rem;
       color: var(--accent);
@@ -107,10 +158,30 @@
       border-radius: 4px;
       white-space: nowrap;
     }
-    .badge-urgent { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
-    .badge-soon { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
-    .badge-normal { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
-    .badge-expired { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.25); }
+
+    .badge-urgent {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .badge-soon {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    .badge-normal {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .badge-expired {
+      background: rgba(148, 163, 184, 0.15);
+      color: #94a3b8;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
 
     .card-footer {
       display: flex;
@@ -120,10 +191,12 @@
       padding-top: 6px;
       border-top: 1px solid rgba(255, 255, 255, 0.05);
     }
+
     .deadline-time {
       font-size: 0.70rem;
       color: var(--text-muted);
     }
+
     .btn-open {
       padding: 3px 8px;
       background-color: #0284c7;
@@ -135,7 +208,10 @@
       cursor: pointer;
       text-decoration: none;
     }
-    .btn-open:hover { background-color: #0369a1; }
+
+    .btn-open:hover {
+      background-color: #0369a1;
+    }
 
     .empty-state {
       grid-column: span 2;
@@ -151,6 +227,7 @@
       gap: 10px;
       align-items: center;
     }
+
     .btn-refresh {
       flex: 1;
       padding: 8px 14px;
@@ -167,8 +244,15 @@
       align-items: center;
       gap: 6px;
     }
-    .btn-refresh:hover { background-color: #0369a1; }
-    .btn-refresh:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .btn-refresh:hover {
+      background-color: #0369a1;
+    }
+
+    .btn-refresh:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
 
     .footer {
       font-size: 0.68rem;
@@ -178,11 +262,13 @@
     }
   </style>
 </head>
+
 <body>
   <div class="header">
     <h2>Pending Assignments</h2>
     <div class="header-info">
       <span id="assignment-count" class="badge-count">0 Due</span>
+      <button id="clear-btn" class="btn-clear" title="Clear all stored assignments">Reset</button>
     </div>
   </div>
 
@@ -202,4 +288,5 @@
 
   <script src="popup.js"></script>
 </body>
+
 </html>
