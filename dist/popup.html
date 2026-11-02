@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pending Assignments</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      width: 660px;
+      padding: 14px 16px;
+      background-color: var(--bg);
+      color: var(--text);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h2 { font-size: 1.05rem; font-weight: 700; color: #fff; }
+    .header-info { display: flex; gap: 10px; align-items: center; }
+    .badge-count {
+      font-size: 0.72rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-weight: 600;
+    }
+
+    /* 2-Column Dashboard Grid */
+    #assignments-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      max-height: 440px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    #assignments-grid::-webkit-scrollbar { width: 6px; }
+    #assignments-grid::-webkit-scrollbar-track { background: transparent; }
+    #assignments-grid::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color 0.2s ease, transform 0.15s ease;
+    }
+    .card:hover {
+      border-color: #475569;
+      transform: translateY(-1px);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .title-box { flex: 1; min-width: 0; }
+    .assignment-title {
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .course-name {
+      font-size: 0.72rem;
+      color: var(--accent);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .badge-urgent { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .badge-soon { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .badge-normal { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .badge-expired { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.25); }
+
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .deadline-time {
+      font-size: 0.70rem;
+      color: var(--text-muted);
+    }
+    .btn-open {
+      padding: 3px 8px;
+      background-color: #0284c7;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.70rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn-open:hover { background-color: #0369a1; }
+
+    .empty-state {
+      grid-column: span 2;
+      text-align: center;
+      padding: 35px 10px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .bottom-bar {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .btn-refresh {
+      flex: 1;
+      padding: 8px 14px;
+      background-color: #0284c7;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.80rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-refresh:hover { background-color: #0369a1; }
+    .btn-refresh:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .footer {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-align: right;
+      line-height: 1.25;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Pending Assignments</h2>
+    <div class="header-info">
+      <span id="assignment-count" class="badge-count">0 Due</span>
+    </div>
+  </div>
+
+  <div id="assignments-grid">
+    <div class="empty-state">Loading assignments...</div>
+  </div>
+
+  <div class="bottom-bar">
+    <button id="refresh-btn" class="btn-refresh">
+      <span>Sync All Courses</span>
+    </button>
+    <div class="footer">
+      <div id="sync-status">Ready</div>
+      <div>Bahria LMS Portal</div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
