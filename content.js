@@ -1,3 +1,5 @@
+if (!globalThis.__bahriaAssignmentTracker) {
+globalThis.__bahriaAssignmentTracker = true;
 /* global chrome */
 
 function parseTableRows(rows, courseName, pageUrl) {
@@ -93,14 +95,17 @@ function scrapeCurrentPage() {
 
 // Fast multi-course crawl via background fetch (No tab reloads!)
 async function crawlAllCourses() {
-  const select =
-    document.querySelector('#courseId') ||
-    document.querySelector('#course') ||
-    document.querySelector("select[name='courseName']") ||
-    (document.querySelectorAll('select').length >= 2 ? document.querySelectorAll('select')[1] : null);
+  const assignmentUrl = new URL('/Student/Assignments.php', location.origin);
+  const response = await fetch(assignmentUrl, { credentials: 'same-origin' });
+  if (!response.ok) throw new Error('Could not load assignments. Please try again.');
+  const assignmentDoc = new DOMParser().parseFromString(await response.text(), 'text/html');
+  const select = assignmentDoc.querySelector('#courseId') ||
+    assignmentDoc.querySelector('#course') ||
+    assignmentDoc.querySelector("select[name='courseName']") ||
+    (assignmentDoc.querySelectorAll('select').length >= 2 ? assignmentDoc.querySelectorAll('select')[1] : null);
 
   if (!select) {
-    throw new Error('Course dropdown not found.');
+    throw new Error('No course list found. Please log in to LMS and try again.');
   }
 
   const options = Array.from(select.options)
@@ -113,7 +118,7 @@ async function crawlAllCourses() {
 
   const parser = new DOMParser();
   const allAssignments = [];
-  const currentUrl = new URL(location.href);
+  const currentUrl = assignmentUrl;
 
   for (let i = 0; i < options.length; i++) {
     const opt = options[i];
@@ -132,15 +137,17 @@ async function crawlAllCourses() {
       targetUrl.searchParams.set('oc', opt.value);
 
       const resp = await fetch(targetUrl.toString(), { credentials: 'same-origin' });
-      if (resp.ok) {
+      if (!resp.ok) throw new Error('Could not load ' + opt.label);
+      {
         const html = await resp.text();
         const doc = parser.parseFromString(html, 'text/html');
+        if (!doc.querySelector('select')) throw new Error('LMS session expired. Please log in again.');
         const rows = Array.from(doc.querySelectorAll('table tr'));
         const items = parseTableRows(rows, opt.label, targetUrl.toString());
         allAssignments.push(...items);
       }
     } catch (err) {
-      console.warn('Failed to fetch course:', opt.label, err);
+      throw new Error('Sync stopped for ' + opt.label + ': ' + err.message);
     }
   }
 
@@ -164,34 +171,16 @@ async function crawlAllCourses() {
   return unique;
 }
 
-// Auto-sync current page on load
-setTimeout(() => {
-  if (location.pathname.includes('Assignments.php')) {
-    const visible = scrapeCurrentPage();
-    if (visible.length > 0) {
-      chrome.storage.local.get(['assignments'], (data) => {
-        const stored = Array.isArray(data.assignments) ? data.assignments : [];
-        const map = new Map();
-        for (const s of stored) {
-          const id = `${(s.title || '').trim().toLowerCase()}||${(s.deadline || '').trim().toLowerCase()}`;
-          map.set(id, s);
-        }
-        for (const v of visible) {
-          const id = `${(v.title || '').trim().toLowerCase()}||${(v.deadline || '').trim().toLowerCase()}`;
-          map.set(id, v);
-        }
-        chrome.storage.local.set({ assignments: Array.from(map.values()) });
-      });
-    }
-  }
-}, 300);
-
-// Listen for popup messages
+// One listener per document, including when injected into a pre-existing tab.
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.type === 'tracker_ping') { sendResponse({ ok: true }); return; }
   if (msg?.type === 'crawl_all_courses') {
     crawlAllCourses()
-      .then((items) => sendResponse({ ok: true, count: items.length }))
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true; // asynchronous response
+      .then(items => sendResponse({ ok: true, count: items.length }))
+      .catch(err => sendResponse({ ok: false, error: err.message }));
+    return true;
   }
 });
+chrome.runtime.sendMessage({ type: 'auto_sync_lms' }).catch(() => {});
+
+}

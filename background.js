@@ -194,3 +194,38 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onStartup.addListener(() => {
   getStoredAssignments().then(updateBadge);
 });
+// Own sync in the background so closing the popup does not interrupt it.
+let assignmentSync = null;
+function syncAssignments(tabId) {
+  if (assignmentSync) return assignmentSync;
+  assignmentSync = (async () => {
+    let tab;
+    if (tabId != null) tab = await chrome.tabs.get(tabId);
+    else {
+      const tabs = await chrome.tabs.query({ url: '*://lms.bahria.edu.pk/*' });
+      tab = tabs.find(t => t.active) || tabs[0];
+    }
+    if (!tab) {
+      await chrome.tabs.create({ url: 'https://lms.bahria.edu.pk/' });
+      throw new Error('LMS opened. Log in and assignments will sync automatically.');
+    }
+    try { await chrome.tabs.sendMessage(tab.id, { type: 'tracker_ping' }); }
+    catch {
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+    }
+    const result = await chrome.tabs.sendMessage(tab.id, { type: 'crawl_all_courses' });
+    if (!result?.ok) throw new Error(result?.error || 'Could not sync assignments.');
+    return result;
+  })().finally(() => { assignmentSync = null; });
+  return assignmentSync;
+}
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.type !== 'sync_assignments' && msg?.type !== 'auto_sync_lms') return;
+  // Defer so injected content scripts finish registering before we contact them.
+  Promise.resolve().then(() => syncAssignments(sender.tab?.id))
+    .then(sendResponse).catch(error => sendResponse({ ok: false, error: error.message }));
+  return true;
+});
+chrome.runtime.onInstalled.addListener(() => {
+  syncAssignments().catch(() => {});
+});
