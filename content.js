@@ -2,6 +2,19 @@ if (!globalThis.__bahriaAssignmentTracker) {
 globalThis.__bahriaAssignmentTracker = true;
 /* global chrome */
 
+function assignmentFiles(column, base) {
+  if (!column) return [];
+  const files = [...column.querySelectorAll('a[href]')].flatMap(a => {
+    try {
+      const url = new URL(a.getAttribute('href'), base);
+      if (url.protocol !== 'https:' || url.hostname !== 'lms.bahria.edu.pk' || url.port || url.username || url.password) return [];
+      const filename = decodeURIComponent(url.pathname.split('/').pop() || 'file');
+      return [{ url: url.href, filename, title: a.textContent.trim() || filename }];
+    } catch { return []; }
+  });
+  return [...new Map(files.map(f => [f.url, f])).values()];
+}
+
 function parseTableRows(rows, courseName, pageUrl) {
   const data = [];
   for (const r of rows) {
@@ -75,6 +88,7 @@ function parseTableRows(rows, courseName, pageUrl) {
       deadline: deadline ? deadline.toISOString() : null,
       link: pageUrl,
       status: submissionCol,
+      downloads: assignmentFiles(cols[2], pageUrl),
     });
   }
   return data;
@@ -154,7 +168,7 @@ async function crawlAllCourses() {
   // Deduplicate by title + deadline
   const map = new Map();
   for (const a of allAssignments) {
-    const id = `${(a.title || '').trim().toLowerCase()}||${(a.deadline || '').trim().toLowerCase()}`;
+    const id = `${(a.course || '').trim().toLowerCase()}||${(a.title || '').trim().toLowerCase()}||${(a.deadline || '').trim().toLowerCase()}`;
     map.set(id, a);
   }
   const unique = Array.from(map.values());

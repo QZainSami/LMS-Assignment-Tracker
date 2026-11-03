@@ -229,3 +229,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 chrome.runtime.onInstalled.addListener(() => {
   syncAssignments().catch(() => {});
 });
+
+// Download only file links already discovered during a course sync.
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.type !== 'download_assignment') return;
+  if (sender.tab) { sendResponse({ ok: false, error: 'Download from the extension popup.' }); return; }
+  (async () => {
+    const assignments = await getStoredAssignments();
+    const assignment = assignments.find(a => a.title === msg.title && a.course === msg.course && a.link === msg.link);
+    const file = assignment?.downloads?.find(f => f.url === msg.url);
+    if (!file) throw new Error('File link not found. Sync All Courses again first.');
+    const part = assignment.downloads.length > 1 ? ' - File ' + (assignment.downloads.indexOf(file) + 1) : '';
+    const id = await FileDownload.start({...file, referrer: assignment.link}, assignment.title + part, 'Bahria/' + Core.segment(assignment.course) + '/Assignments');
+    return { ok: true, id };
+  })().then(sendResponse).catch(error => sendResponse({ ok: false, error: error.message }));
+  return true;
+});

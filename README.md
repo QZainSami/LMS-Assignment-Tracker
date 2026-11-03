@@ -70,3 +70,23 @@ A lightweight Manifest V3 browser extension for Bahria University students that 
 ## License
 
 This project is licensed under the [MIT License](LICENSE) — free for student use, contributions, and community improvements.
+## Version 2.1.3 — assignment downloads (Firefox / Zen)
+
+- Sync All Courses now captures assignment attachment links.
+- Each assignment card provides Download assignment, or separate buttons for multiple files.
+- Downloads save to Downloads/Bahria/Course/Assignments using the assignment title and actual file type, rather than Download.php.
+- Requires a valid LMS session. Recognizable login/error responses are rejected.
+- Adds the downloads permission. Existing extension ID and stored assignments are retained.
+
+After updating, reload the extension and sync all courses once to populate attachment links. The background download implementation targets Firefox/Zen; this is not a Chrome-compatible package.
+
+Validation: 9 automated checks cover attachment parsing, submitted-item exclusion, message validation, response bytes, file types and filenames. All JavaScript passes syntax checks. A real logged-in LMS download still needs verification.
+
+## Version 2.1.4 — LMS download request fix
+
+- LMS Download.php links with an encoded original filename are sent directly to Firefox's download manager, preserving the original extension and assignment-title filename.
+- Sends the assignment page as the download referrer.
+- Other links retain file-response detection; a background network failure retries through an existing logged-in LMS tab without navigating it.
+- 12 automated tests pass, including the encoded .docx link format and network-error fallback. Real LMS downloads still require a logged-in check.
+
+Reload the extension after updating and Sync All Courses once to refresh dated download links. No new permissions are added in 2.1.4.
