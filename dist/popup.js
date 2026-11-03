@@ -7,6 +7,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const countTag = document.getElementById('assignment-count');
   const syncStatus = document.getElementById('sync-status');
 
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
   function parseDeadline(isoStr) {
     if (!isoStr) return null;
     try {
@@ -66,14 +70,14 @@ document.addEventListener('DOMContentLoaded', () => {
       card.innerHTML = `
         <div class="card-header">
           <div class="title-box">
-            <div class="assignment-title" title="${item.title}">${item.title}</div>
-            <div class="course-name" title="${item.course || ''}">${item.course || 'Unknown Course'}</div>
+            <div class="assignment-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
+            <div class="course-name" title="${escapeHtml(item.course || '')}">${escapeHtml(item.course || 'Unknown Course')}</div>
           </div>
           <span class="badge ${diff.class}">${diff.label}</span>
         </div>
         <div class="card-footer">
-          <span class="deadline-time">📅 ${dateDisplay}</span>
-          <button class="btn-open" data-link="${item.link || 'https://lms.bahria.edu.pk/Student/Assignments.php'}">Open ↗</button>
+          <span class="deadline-time">📅 ${escapeHtml(dateDisplay)}</span>
+          <button class="btn-open" data-link="${escapeHtml(item.link || 'https://lms.bahria.edu.pk/Student/Assignments.php')}">Open ↗</button>
         </div>
       `;
 
@@ -81,6 +85,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = e.currentTarget.getAttribute('data-link');
         chrome.tabs.create({ url });
       });
+
+      if (item.downloads?.length) {
+        const actions = document.createElement('div');
+        actions.className = 'download-actions';
+        item.downloads.forEach((file, index) => {
+          const button = document.createElement('button');
+          button.className = 'btn-open';
+          button.textContent = item.downloads.length > 1 ? `Download file ${index + 1}` : 'Download assignment';
+          button.title = file.filename || 'Assignment file';
+          button.addEventListener('click', async () => {
+            button.disabled = true;
+            const label = button.textContent;
+            button.textContent = 'Downloading…';
+            syncStatus.textContent = 'Fetching assignment file…';
+            try {
+              const result = await chrome.runtime.sendMessage({ type: 'download_assignment', title: item.title, course: item.course, link: item.link, url: file.url });
+              if (!result?.ok) throw new Error(result?.error || 'Download failed.');
+              syncStatus.textContent = 'Download started';
+            } catch (error) {
+              syncStatus.textContent = 'Download failed';
+              alert(error.message);
+            } finally { button.disabled = false; button.textContent = label; }
+          });
+          actions.appendChild(button);
+        });
+        card.appendChild(actions);
+      } else if (!item.downloads) {
+        const hint = document.createElement('div');
+        hint.className = 'download-hint';
+        hint.textContent = 'Sync All Courses to load download links.';
+        card.appendChild(hint);
+      }
 
       grid.appendChild(card);
     });
@@ -138,32 +174,12 @@ document.addEventListener('DOMContentLoaded', () => {
     syncStatus.textContent = 'Checking LMS...';
 
     try {
-      const tabs = await chrome.tabs.query({ url: '*://lms.bahria.edu.pk/*' });
-      if (!tabs || tabs.length === 0) {
-        await chrome.tabs.create({ url: 'https://lms.bahria.edu.pk/Student/Assignments.php' });
-        refreshBtn.disabled = false;
-        refreshBtn.textContent = 'Sync All Courses';
-        syncStatus.textContent = 'LMS tab opened';
-        alert('LMS tab opened. Please log in and click Sync All Courses again.');
-        return;
-      }
-
-      let lmsTab = tabs.find((t) => /Assignments\.php/i.test(t.url)) || tabs[0];
-      if (!/Assignments\.php/i.test(lmsTab.url)) {
-        syncStatus.textContent = 'Opening assignments page...';
-        await chrome.tabs.update(lmsTab.id, { url: 'https://lms.bahria.edu.pk/Student/Assignments.php' });
-        await new Promise((r) => setTimeout(r, 1500));
-      }
-
-      syncStatus.textContent = 'Scanning all courses...';
-      chrome.tabs.sendMessage(lmsTab.id, { type: 'crawl_all_courses' }, (resp) => {
-        if (chrome.runtime.lastError || !resp?.ok) {
-          refreshBtn.disabled = false;
-          refreshBtn.textContent = 'Sync All Courses';
-          syncStatus.textContent = 'Sync failed';
-          alert('Could not start sync: ' + (resp?.error || chrome.runtime.lastError?.message || 'Please reload your LMS tab and try again.'));
-        }
-      });
+      const result = await chrome.runtime.sendMessage({ type: 'sync_assignments' });
+      if (!result?.ok) throw new Error(result?.error || 'Could not sync assignments.');
+      syncStatus.textContent = `Done (${result.count || 0} found)`;
+      loadStored();
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = 'Sync All Courses';
     } catch (err) {
       refreshBtn.disabled = false;
       refreshBtn.textContent = 'Sync All Courses';
